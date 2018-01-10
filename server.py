@@ -47,7 +47,6 @@ class Application(tornado.web.Application):
         """Create a database connection"""
         try:
             conn = sqlite3.connect(options.database)
-            print(sqlite3.version)
             return conn.cursor()
         except Error as e:
             print(e)
@@ -74,7 +73,7 @@ class Application(tornado.web.Application):
             self.db.execute("""
                 CREATE TABLE IF NOT EXISTS docs (
                   id integer PRIMARY KEY,
-                  file blob NOT NULL,
+                  file BLOB NOT NULL,
                   FOREIGN KEY (user_id) REFERENCES users (id)
                 );""")
             self.db.execute("""
@@ -119,10 +118,9 @@ class BaseHandler(tornado.web.RequestHandler):
 
 
 class HomeHandler(BaseHandler):
-    @tornado.web.authenticated
     def get(self):
-        name = tornado.escape.xhtml_escape(self.current_user)
-        self.write("Hello, " + name)
+        self.write("Hello, world")
+        self.render("home.html")
 
 
 class AuthCreateHandler(BaseHandler):
