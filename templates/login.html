@@ -5,7 +5,7 @@
 <span style="color: red">Error: {{ error }}</span><p>
 {% end %}
 
-<form action="/login" method="POST">
+<form action="/auth/login" method="POST">
   Name: <input name="name" type="text"><br>
   Password: <input name="password" type="password"><br>
   {% module xsrf_form_html() %}

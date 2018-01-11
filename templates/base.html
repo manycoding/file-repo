@@ -12,9 +12,11 @@
       <div id="header">
         <div style="float:right">
           {% if current_user %}
-            <a href="/logout?next={{ url_escape(request.uri) }}">{{ _("Sign out") }}</a>
+            Hello, {{ user }}  
+            <a href="/auth/logout?next={{ url_escape(request.uri) }}">{{ _("Sign out") }}</a>
           {% else %}
-            {% raw _('<a href="%(url)s">Sign in</a> to compose/edit') % {"url": "/login?next=" + url_escape(request.uri)} %}
+            {% raw _('<a href="%(url)s">Sign in</a> /') % {"url": "/auth/login?next=" + url_escape(request.uri)} %}
+            {% raw _('<a href="%(url)s">Up</a>') % {"url": "/auth/create"} %}
           {% end %}
         </div>
         <h1><a href="/">{{ escape(handler.settings["blog_title"]) }}</a></h1>
