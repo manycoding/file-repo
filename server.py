@@ -1,19 +1,21 @@
 import bcrypt
 import concurrent.futures
+import db
 import sqlite3
 import tornado.ioloop
 import tornado.web
 import os
+import pdf
 
 from sqlite3 import Error
 from tornado.options import define, options
 from tornado import gen
+from tornado.log import logging
 
 define("port", default=8888, help="run on the given port", type=int)
-define("database", default="file-repo.sqlite3", help="database name")
 
 
-# A thread pool to be used for password hashing with bcrypt.
+# A thread pool
 executor = concurrent.futures.ThreadPoolExecutor(2)
 
 
@@ -31,7 +33,6 @@ class Application(tornado.web.Application):
             blog_title=u"File repo",
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
             static_path=os.path.join(os.path.dirname(__file__), "static"),
-            # ui_modules={"Entry": EntryModule},
             xsrf_cookies=True,
             cookie_secret="oLGcDzgWH^5^$M77DS8mkOHNZ@$yO3pu1W6^Sy&s7jHreFUdGsy5EvkEIbKN%Q6^0qyr6J@u0Vkz3k!sU#f3o0plKXYlB*xL^7o*",
             login_url="/auth/create",
@@ -39,15 +40,13 @@ class Application(tornado.web.Application):
         )
         super(Application, self).__init__(handlers, **settings)
 
-        self.maybe_create_tables()
-
     def create_session(self):
         """Create a database connection"""
         try:
             conn = sqlite3.connect(options.database)
             return conn
         except Error as e:
-            print(e)
+            logging.debug(e)
         # TODO: close connection
         return None
 
@@ -56,33 +55,6 @@ class Application(tornado.web.Application):
         if self._db is None:
             self._db = self.create_session()
         return self._db
-
-    def maybe_create_tables(self):
-        try:
-            self.db.cursor().execute("SELECT COUNT(*) from users;")
-        except Error as e:
-            print(e)
-            print("Creating tables")
-            self.db.cursor().execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                  id integer PRIMARY KEY,
-                  name text NOT NULL,
-                  hashed_password text NOT NULL
-                );""")
-            self.db.cursor().execute("""
-                CREATE TABLE IF NOT EXISTS docs (
-                  id integer PRIMARY KEY,
-                  file BLOB NOT NULL,
-                  user_id integer NOT NULL,
-                  FOREIGN KEY (user_id) REFERENCES users (id)
-                );""")
-            self.db.cursor().execute("""
-                CREATE TABLE IF NOT EXISTS images (
-                  id integer PRIMARY KEY,
-                  doc_id integer NOT NULL,
-                  image blob NOT NULL,
-                  FOREIGN KEY (doc_id) REFERENCES docs (id)
-                );""")
 
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -99,15 +71,18 @@ class BaseHandler(tornado.web.RequestHandler):
             """, (int(user_id),))
         return cursor.fetchall()[0]
 
+    async def data_received(self):
+        logging.debug(f'{self.request}')
+
 
 class HomeHandler(BaseHandler):
+    @gen.coroutine
     def get(self):
-        self.write("Hello, world")
+        files = yield db.get_file_list()
         user_id = self.get_secure_cookie("user")
-        if not user_id:
-            return self.render("home.html")
-        return self.render("home.html", user=self.get_current_user()[1])
-
+        return self.render("home.html",
+                           files=files,
+                           user=self.get_current_user()[1] if user_id else None)
 
 
 class AuthCreateHandler(BaseHandler):
@@ -128,6 +103,24 @@ class AuthCreateHandler(BaseHandler):
         self.redirect(self.get_argument("next", "/"))
 
 
+class PostFile(BaseHandler):
+    @gen.coroutine
+    def post(self, *args, **kwargs):
+        logging.debug(f'dir(self)')
+        for field, files in self.request.files.items():
+            logging.info(f'POST {field} {files}')
+            for info in files:
+                filename = info['filename']
+                content_type = info['content_type']
+                body = info['body']
+                logging.info(f'POST {field}: {filename} {content_type} {len(body)} bytes')
+                if content_type.lower() == 'application/pdf':
+                    file = yield pdf_utils.save_pdf_file(body,
+                                                         filename,
+                                                         self.get_current_user())
+        self.redirect('/')
+
+
 class AuthLoginHandler(BaseHandler):
     def get(self):
         self.render("login.html", error=None)
@@ -139,8 +132,8 @@ class AuthLoginHandler(BaseHandler):
             """, (self.get_argument("name"),))
         user = cursor.fetchall()[0]
         password = user[2]
-        print(user)
-        print(password)
+        logging.debug(user)
+        logging.debug(password)
 
         if not user:
             self.render("login.html", error="user not found")

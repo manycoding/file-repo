@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="{{ static_url("file-repo.css") }}" type="text/css">
     <link rel="alternate" href="/feed" type="application/atom+xml" title="{{ escape(handler.settings["blog_title"]) }}">
     {% block head %}{% end %}
+     <script type="text/javascript" src="https://cdn.rawgit.com/brython-dev/brython/stable/www/src/brython.js"></script>
   </head>
   <body>
     <div id="body">
@@ -15,7 +16,7 @@
             Hello, {{ user }}  
             <a href="/auth/logout?next={{ url_escape(request.uri) }}">{{ _("Sign out") }}</a>
           {% else %}
-            {% raw _('<a href="%(url)s">Sign in</a> /') % {"url": "/auth/login?next=" + url_escape(request.uri)} %}
+            {% raw _('<a href="%(url)s">Sign In</a> /') % {"url": "/auth/login?next=" + url_escape(request.uri)} %}
             {% raw _('<a href="%(url)s">Up</a>') % {"url": "/auth/create"} %}
           {% end %}
         </div>
