@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 
 {% block body %}
-<form action="/auth/create" method="POST">
-  Name: <input name="name" type="text"><br>
-  Password: <input name="password" type="password"><br>
-  {% module xsrf_form_html() %}
-  <input type="submit" value="Sign Up">
-</form>
+    {% if error %}
+        <span style="color: red">Error: {{ error }}</span><p>
+    {% end %}
+    <form action="/auth/create" method="POST">
+        Name: <input name="name" type="text"><br>
+        Password: <input name="password" type="password"><br>
+        {% module xsrf_form_html() %}
+        <input type="submit" value="Sign Up">
+    </form>
 {% end %}

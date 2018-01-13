@@ -1,11 +1,8 @@
 {% extends "base.html" %}
 
-{% block body %}
     <div class="pdf_row">
-        <div class="datetime">{{ pdf_file['loaded'] }}</div>
         <div class="file_pages" title="файл: {{ pdf_file['hashed_name'] }}.pdf">{{ pdf_file['pages'] }}</div>
         <div class="file_name" title="Просмотр"><a href="/pdf/{{ pdf_file['hashed_name'] }}">{{ pdf_file['name'] }}</a></div>
         <div class="file_download"><a href="/media/pdf/{{pdf_file['hashed_name']}}" download="{{ pdf_file['name'] }}">СКАЧАТЬ</a></div>
         <div class="user_name">{{ pdf_file['user_name'] }} ({{ pdf_file['user_id'] }})</div>
     </div>
-{% end %}

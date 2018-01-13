@@ -1,11 +1,9 @@
-import bcrypt
-import concurrent.futures
 import db
 import sqlite3
 import tornado.ioloop
 import tornado.web
 import os
-import pdf
+# import pdf
 
 from sqlite3 import Error
 from tornado.options import define, options
@@ -15,10 +13,6 @@ from tornado.log import logging
 define("port", default=8888, help="run on the given port", type=int)
 
 
-# A thread pool
-executor = concurrent.futures.ThreadPoolExecutor(2)
-
-
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
@@ -26,6 +20,11 @@ class Application(tornado.web.Application):
             (r"/auth/login", AuthLoginHandler),
             (r"/auth/logout", AuthLogoutHandler),
             (r"/auth/create", AuthCreateHandler),
+            (r'/post', PostFile),
+            # (r'/pdf/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)?', Preview),
+            # (r'/media/pdf/(?P<hashed_name>[^\/]+)', handlers.PdfFileStreamDownload, {'file_path': settings.MEDIA_PDF}),
+            # (r'/media/png/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)', handlers.PngFileStreamDownload, {'file_path': settings.MEDIA_PAGES}),
+            # (r'/pages/(.*)', StaticFileHandler, {'path': f'{settings.MEDIA_PAGES}'}),
         ]
         self._db = None
 
@@ -63,13 +62,14 @@ class BaseHandler(tornado.web.RequestHandler):
         return self.application.db
 
     def get_current_user(self):
-        user_id = self.get_secure_cookie("user")
-        if not user_id:
-            return None
-        cursor = self.db.cursor().execute("""
-            SELECT * FROM users WHERE id=?
-            """, (int(user_id),))
-        return cursor.fetchall()[0]
+        logging.debug(f'{self.get_secure_cookie("user")}')
+        return self.get_secure_cookie("user")
+
+    def set_current_user(self, user_name):
+        if user_name:
+            self.set_secure_cookie("user", user_name)
+        else:
+            self.clear_cookie("user")
 
     async def data_received(self):
         logging.debug(f'{self.request}')
@@ -79,28 +79,12 @@ class HomeHandler(BaseHandler):
     @gen.coroutine
     def get(self):
         files = yield db.get_file_list()
-        user_id = self.get_secure_cookie("user")
+        files = None
+        logging.debug(files)
         return self.render("home.html",
-                           files=files,
-                           user=self.get_current_user()[1] if user_id else None)
-
-
-class AuthCreateHandler(BaseHandler):
-    def get(self):
-        self.render("create_user.html")
-
-    @gen.coroutine
-    def post(self):
-        hashed_password = yield executor.submit(
-            bcrypt.hashpw, tornado.escape.utf8(self.get_argument("password")),
-            bcrypt.gensalt())
-        cursor = self.db.cursor().execute(
-            """INSERT INTO users(name, hashed_password)
-            VALUES(?, ?)""", (self.get_argument("name"),
-                              hashed_password),)
-        self.db.commit()
-        self.set_secure_cookie("user", str(cursor.lastrowid))
-        self.redirect(self.get_argument("next", "/"))
+                           files_list=files,
+                           error_message=''
+                           )
 
 
 class PostFile(BaseHandler):
@@ -113,39 +97,55 @@ class PostFile(BaseHandler):
                 filename = info['filename']
                 content_type = info['content_type']
                 body = info['body']
-                logging.info(f'POST {field}: {filename} {content_type} {len(body)} bytes')
+                logging.info(
+                    f'POST {field}: {filename} {content_type} {len(body)} bytes')
                 if content_type.lower() == 'application/pdf':
                     file = yield pdf_utils.save_pdf_file(body,
                                                          filename,
-                                                         self.get_current_user())
+                                                         self.current_user
+                                                         )
         self.redirect('/')
+
+
+class AuthCreateHandler(BaseHandler):
+    def get(self):
+        self.render("create_user.html", error=None)
+
+    @gen.coroutine
+    def post(self):
+        name = self.get_argument("name")
+        user_id = yield db.create_user(name, self.get_argument("password"))
+
+        if user_id:
+            self.set_current_user(name)
+            self.redirect(self.get_argument("next", "/"))
+        else:
+            self.render("create_user.html", error="""
+                could not create user with such name and password
+                """)
 
 
 class AuthLoginHandler(BaseHandler):
     def get(self):
-        self.render("login.html", error=None)
+        if self.current_user:
+            self.redirect(self.get_argument('next', '/'))
+        else:
+            self.render("login.html", error=None)
 
     @gen.coroutine
     def post(self):
-        cursor = self.db.cursor().execute("""
-            SELECT * FROM users WHERE name=?
-            """, (self.get_argument("name"),))
-        user = cursor.fetchall()[0]
-        password = user[2]
-        logging.debug(user)
-        logging.debug(password)
+        user_name = self.get_argument("name")
+        user = yield db.get_user(user_name,
+                                 self.get_argument("password"))
+        user = user[0] if user else None
 
-        if not user:
-            self.render("login.html", error="user not found")
-            return
-        hashed_password = yield executor.submit(
-            bcrypt.hashpw, tornado.escape.utf8(self.get_argument("password")),
-            tornado.escape.utf8(password))
-        if hashed_password == password:
-            self.set_secure_cookie("user", str(user[0]))
+        if user:
+            self.set_current_user(user_name)
             self.redirect(self.get_argument("next", "/"))
         else:
-            self.render("login.html", error="incorrect password")
+            self.render("login.html", error="""
+                user with such name and password was not found
+                """)
 
 
 class AuthLogoutHandler(BaseHandler):
@@ -155,6 +155,7 @@ class AuthLogoutHandler(BaseHandler):
 
 
 def main():
+    db.init()
     tornado.options.parse_command_line()
     http_server = tornado.httpserver.HTTPServer(Application())
     http_server.listen(options.port)

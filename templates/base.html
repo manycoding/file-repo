@@ -8,12 +8,12 @@
     {% block head %}{% end %}
      <script type="text/javascript" src="https://cdn.rawgit.com/brython-dev/brython/stable/www/src/brython.js"></script>
   </head>
-  <body>
+  <body onload="brython(1)">
     <div id="body">
       <div id="header">
         <div style="float:right">
           {% if current_user %}
-            Hello, {{ user }}  
+            Hello, {{ current_user }}  
             <a href="/auth/logout?next={{ url_escape(request.uri) }}">{{ _("Sign out") }}</a>
           {% else %}
             {% raw _('<a href="%(url)s">Sign In</a> /') % {"url": "/auth/login?next=" + url_escape(request.uri)} %}
