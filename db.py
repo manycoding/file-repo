@@ -23,7 +23,7 @@ def query(sql, args):
         logging.info(f'query: {sql} {args}')
         with conn:
             cursor.execute(sql, args)
-        if sql.startswith('INSERT '):
+        if sql.strip().startswith('INSERT '):
             # conn.commit()
             data = cursor.lastrowid
         else:
@@ -96,19 +96,18 @@ def create_user(name, password):
     hashed_password = yield executor.submit(
         bcrypt.hashpw, tornado.escape.utf8(password),
         bcrypt.gensalt())
-    yield query("""
+    user_id = yield query("""
         INSERT INTO users(name, hashed_password)
         VALUES(?, ?)""", (name, hashed_password,))
+    return user_id
 
 
 @coroutine
 def insert_pdf(pdf_name, hashed_name, user_name, total_pages=-1):
     user_id = yield get_user_id(user_name)
+    user_id = user_id[0][0] if user_id is not None else 0
     logging.info(
-        f'insert_pdf: user_name={user_name} user_id={user_id} selected')
-    user_id = user_id[0] if user_id is not None else 0
-    logging.info(
-        f'insert_pdf: user_name={user_name} user_id={user_id} selected')
+        f'insert_pdf: user_name={user_name} user_id={user_id}')
     pdf_id = yield query("""
         INSERT into files (name, hashed_name, user_id, pages) values (?, ?, ?, ?);
         """, (pdf_name, hashed_name, user_id, total_pages))
@@ -126,7 +125,6 @@ def init():
     query("""
         CREATE TABLE IF NOT EXISTS files (
           id integer PRIMARY KEY,
-          file blob NOT NULL,
           user_id integer NOT NULL,
           pages integer,
           published datetime,

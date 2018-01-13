@@ -45,6 +45,6 @@ def save_pdf_file(body, pdf_name, user_name):
     with open(f'{settings.MEDIA_PDF}/{hashed_name}.pdf', 'wb') as pdf:
         pdf.write(body)
     total_pages = PdfFileReader(f'{settings.MEDIA_PDF}/{hashed_name}.pdf').getNumPages()
-    pdf_data = yield database.insert_pdf(pdf_name, hashed_name, user_name, total_pages)
+    pdf_data = yield db.insert_pdf(pdf_name, hashed_name, user_name, total_pages)
     logging.debug(f'save_pdf_file: {pdf_name} ({total_pages} pages) saved ({len(body)} bytes) in {hashed_name}.pdf')
     return pdf_data

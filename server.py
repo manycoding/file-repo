@@ -3,7 +3,7 @@ import sqlite3
 import tornado.ioloop
 import tornado.web
 import os
-# import pdf
+import pdf
 
 from sqlite3 import Error
 from tornado.options import define, options
@@ -79,11 +79,10 @@ class HomeHandler(BaseHandler):
     @gen.coroutine
     def get(self):
         files = yield db.get_file_list()
-        files = None
         logging.debug(files)
         return self.render("home.html",
                            files_list=files,
-                           error_message=''
+                           error=''
                            )
 
 
@@ -100,10 +99,13 @@ class PostFile(BaseHandler):
                 logging.info(
                     f'POST {field}: {filename} {content_type} {len(body)} bytes')
                 if content_type.lower() == 'application/pdf':
-                    file = yield pdf_utils.save_pdf_file(body,
-                                                         filename,
-                                                         self.current_user
-                                                         )
+                    file = yield pdf.save_pdf_file(body,
+                                                   filename,
+                                                   self.current_user.decode()
+                                                   )
+                else:
+                    self.render(
+                        "home.html", error=f"expected pdf but received {content_type.lower()}")
         self.redirect('/')
 
 
@@ -115,7 +117,7 @@ class AuthCreateHandler(BaseHandler):
     def post(self):
         name = self.get_argument("name")
         user_id = yield db.create_user(name, self.get_argument("password"))
-
+        logging.info(f'user_id: {user_id}')
         if user_id:
             self.set_current_user(name)
             self.redirect(self.get_argument("next", "/"))
