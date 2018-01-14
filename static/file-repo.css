@@ -135,3 +135,12 @@ a code {
   height: 500px;
   line-height: 16pt;
 }
+
+.pdf_row {
+    padding-left: 3px;
+    margin-right: 1px;
+}
+
+.file_download, .datetime, .file_name, .file_name_id, .user_name, .current_user, .file_pages {
+    display: inline-block;
+}

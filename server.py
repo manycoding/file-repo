@@ -1,14 +1,14 @@
 import db
-import sqlite3
 import tornado.ioloop
 import tornado.web
 import os
 import pdf
+import config
 
-from sqlite3 import Error
 from tornado.options import define, options
 from tornado import gen
 from tornado.log import logging
+from tornado.web import StaticFileHandler
 
 define("port", default=8888, help="run on the given port", type=int)
 
@@ -20,13 +20,16 @@ class Application(tornado.web.Application):
             (r"/auth/login", AuthLoginHandler),
             (r"/auth/logout", AuthLogoutHandler),
             (r"/auth/create", AuthCreateHandler),
-            (r'/post', PostFile),
-            # (r'/pdf/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)?', Preview),
-            # (r'/media/pdf/(?P<hashed_name>[^\/]+)', handlers.PdfFileStreamDownload, {'file_path': settings.MEDIA_PDF}),
-            # (r'/media/png/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)', handlers.PngFileStreamDownload, {'file_path': settings.MEDIA_PAGES}),
-            # (r'/pages/(.*)', StaticFileHandler, {'path': f'{settings.MEDIA_PAGES}'}),
+            (r'/post', PostFileHandler),
+            (r'/pdf/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)?',
+             PreviewHandler),
+            (r'/media/pdf/(?P<hashed_name>[^\/]+)',
+             PdfDownloadHandler, {'file_path': config.MEDIA_PDF}),
+            (r'/media/png/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)',
+             PngDownloadHandler, {'file_path': config.MEDIA_PAGES}),
+            (r'/pages/(.*)', StaticFileHandler,
+             {'path': f'{config.MEDIA_PAGES}'}),
         ]
-        self._db = None
 
         settings = dict(
             blog_title=u"File repo",
@@ -39,28 +42,8 @@ class Application(tornado.web.Application):
         )
         super(Application, self).__init__(handlers, **settings)
 
-    def create_session(self):
-        """Create a database connection"""
-        try:
-            conn = sqlite3.connect(options.database)
-            return conn
-        except Error as e:
-            logging.debug(e)
-        # TODO: close connection
-        return None
-
-    @property
-    def db(self):
-        if self._db is None:
-            self._db = self.create_session()
-        return self._db
-
 
 class BaseHandler(tornado.web.RequestHandler):
-    @property
-    def db(self):
-        return self.application.db
-
     def get_current_user(self):
         logging.debug(f'{self.get_secure_cookie("user")}')
         return self.get_secure_cookie("user")
@@ -79,16 +62,17 @@ class HomeHandler(BaseHandler):
     @gen.coroutine
     def get(self):
         files = yield db.get_file_list()
-        logging.debug(files)
+        logging.info(files)
         return self.render("home.html",
                            files_list=files,
                            error=''
                            )
 
 
-class PostFile(BaseHandler):
+class PostFileHandler(BaseHandler):
     @gen.coroutine
     def post(self, *args, **kwargs):
+        files = yield db.get_file_list()
         logging.debug(f'dir(self)')
         for field, files in self.request.files.items():
             logging.info(f'POST {field} {files}')
@@ -103,10 +87,91 @@ class PostFile(BaseHandler):
                                                    filename,
                                                    self.current_user.decode()
                                                    )
+                    self.redirect('/')
                 else:
                     self.render(
-                        "home.html", error=f"expected pdf but received {content_type.lower()}")
+                        "home.html",
+                        files_list=files,
+                        error=f"expected pdf but received {content_type.lower()}")
         self.redirect('/')
+
+
+class PdfDownloadHandler(BaseHandler):
+    def initialize(self, file_path):
+        self.file_path = file_path
+
+    @tornado.web.asynchronous
+    @gen.engine
+    def get(self, hashed_name):
+        file_size = os.path.getsize(f'{self.file_path}/{hashed_name}.pdf')
+        logging.info(
+            f'download handler: {self.file_path}/{hashed_name} {file_size} bytes')
+        self.set_header('Content-Type', 'application/pdf')
+        self.set_header('Content-length', file_size)
+        self.flush()
+        fd = open(f'{self.file_path}/{hashed_name}.pdf', 'rb')
+        complete_download = False
+        while not complete_download:
+            data = fd.read(config.CHUNK_SIZE)
+            logging.info(f'download chunk: {len(data)} bytes')
+            if len(data) > 0:
+                self.write(data)
+                yield gen.Task(self.flush)
+            complete_download = (len(data) == 0)
+        fd.close()
+        self.finish()
+
+
+class PreviewHandler(BaseHandler):
+    @gen.coroutine
+    def get(self, **params):
+        hashed_name = params['hashed_name']
+        page = int(params['page']) if params['page'] else 1
+
+        pdf_name, png_url, page, pages = yield pdf.get_page_url(hashed_name, page - 1)
+        prev_page, next_page = page - 1, page + 1
+        prev_page = (updf.page_url(prev_page, hashed_name)
+                     ) if prev_page > 0 else None
+        next_page = (updf.page_url(next_page, hashed_name)
+                     ) if next_page < pages else None
+        png_url_download = pdf_name.replace('.pdf', f'-page_{page}.png')
+
+        self.render('preview_page.html',
+                    png_url=png_url,
+                    hashed_name=hashed_name,
+                    title=f'{page} стр. {pdf_name}',
+                    pdf_name=pdf_name,
+                    png_url_download=png_url_download,
+                    page=page,
+                    pages=pages,
+                    prev_page=prev_page,
+                    next_page=next_page)
+
+
+class PngDownloadHandler(BaseHandler):
+    def initialize(self, file_path):
+        self.file_path = file_path
+
+    @tornado.web.asynchronous
+    @gen.engine
+    def get(self, file_name):
+        file_size = os.path.getsize(f'{self.file_path}/{hashed_name}')
+        logging.info(
+            f'download handler: {self.file_path}/{hashed_name} {file_size} bytes')
+        self.set_header('Content-Type', 'application/png')
+        self.set_header('Content-length', file_size)
+        self.flush()
+        fd = open(f'{self.file_path}/{hashed_name}{page}.png', 'rb')
+        complete_download = False
+        while not complete_download:
+            data = fd.read(config.CHUNK_SIZE)
+            logging.info(f'download chunk: {len(data)} bytes')
+            if len(data) > 0:
+                self.write(data)
+                yield gen.Task(self.flush)
+            complete_download = (len(data) == 0)
+        fd.close()
+        self.finish()
 
 
 class AuthCreateHandler(BaseHandler):
@@ -117,7 +182,7 @@ class AuthCreateHandler(BaseHandler):
     def post(self):
         name = self.get_argument("name")
         user_id = yield db.create_user(name, self.get_argument("password"))
-        logging.info(f'user_id: {user_id}')
+        logging.debug(f'user_id: {user_id}')
         if user_id:
             self.set_current_user(name)
             self.redirect(self.get_argument("next", "/"))

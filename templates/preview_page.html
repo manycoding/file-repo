@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block body %}
+    <div class="page_header">
+        <a class="go_shelf" href="/">< Полка</a>
+        <div class="prev_page">
+            {% if prev_page %}
+                <a href="{{prev_page[0]}}">{{prev_page[1]}}</a>
+            {% end %}
+        </div>
+        <form class="form_page_select" method="post" action="/pdf/{{hashed_name}}">
+            {% module xsrf_form_html() %}
+            <input class="page_input" value="{{page}}" type="text" id="page_num" name="page_num">
+            <input id="signin-btn" class="btn btn-blue" type="submit" value="->">
+        </form>
+        <div class="next_page">
+            {% if next_page %}
+                <a href="{{next_page[0]}}">{{next_page[1]}}</a>
+            {% end %}
+        </div>
+        <a class="png_download" href="{{png_url}}" download={{png_url_download}}>ЗАГРУЗИТЬ {{page}}-ю страницу</a>
+        <span class="total_pages">{{pages}}</span>
+    </div>
+    <div class="page_content">
+        <img class="page_png" src="{{png_url}}">
+    </div>
+{% end %}

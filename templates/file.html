@@ -1,8 +1,7 @@
-{% extends "base.html" %}
-
-<div class="pdf_row">
-    <div class="file_pages" title="файл: {{ pdf_file['hashed_name'] }}.pdf">{{ pdf_file['pages'] }}</div>
-    <div class="file_name" title="Просмотр"><a href="/pdf/{{ pdf_file['hashed_name'] }}">{{ pdf_file['name'] }}</a></div>
-    <div class="file_download"><a href="/media/pdf/{{pdf_file['hashed_name']}}" download="{{ pdf_file['name'] }}">СКАЧАТЬ</a></div>
-    <div class="user_name">{{ pdf_file['user_name'] }} ({{ pdf_file['user_id'] }})</div>
-</div>
+    <div class="pdf_row">
+        <div class="user_name">{{ pdf_file['user_name'] }}</div>
+        <div class="file_name" title="View"><a href="/pdf/{{ pdf_file['hashed_name'] }}">{{ pdf_file['name'] }}</a></div>
+<!--         <div class="file_download"><a href="/media/pdf/{{pdf_file['hashed_name']}}" download="{{ pdf_file['name'] }}">GET</a></div> -->
+        <div class="file_name"><a href="/media/pdf/{{pdf_file['hashed_name']}}" download="{{ pdf_file['name'] }}">{{ pdf_file['name'] }}</a></div>
+        <div class="file_pages" title="File: {{ pdf_file['hashed_name'] }}.pdf">{{ pdf_file['pages'] }}</div>
+   </div>

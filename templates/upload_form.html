@@ -1,14 +1,12 @@
-{% extends "base.html" %}
-
-{% block body %}
-    {% if current_user %}
-        {% if error %}
-            <span style="color: red">Error: {{ error }}</span><p>
-        {% end %}
-        <form enctype="multipart/form-data" action="/post" method="POST" class="upload_form">
-            {% module xsrf_form_html() %}
-            <input type="file" name="filename" value="fileupload" id="fileupload">
-            <input type="submit" value="Upload">
-        </form>
+{% if current_user %}
+    {% if error %}
+        <span style="color: red">Error: {{ error }}</span><p>
     {% end %}
+    <form enctype="multipart/form-data" action="/post" method="POST" class="upload_form">
+        {% module xsrf_form_html() %}
+        <input type="file" name="filename" value="fileupload" id="fileupload">
+        <p>
+            <input type="submit" value="Upload">
+        </p>
+    </form>
 {% end %}

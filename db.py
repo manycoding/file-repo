@@ -1,4 +1,5 @@
 import bcrypt
+import datetime
 import sqlite3
 import tornado
 import concurrent.futures
@@ -10,7 +11,8 @@ from tornado.log import logging
 
 define("database", default="file-repo.sqlite3", help="database name")
 conn = sqlite3.connect(options.database)
-# db.row_factory = lambda _cursor, row: {col[0]: row[i] for i, col in enumerate(_cursor.description)}
+conn.row_factory = lambda _cursor, row: {
+    col[0]: row[i] for i, col in enumerate(_cursor.description)}
 cursor = conn.cursor()
 # A thread pool
 executor = concurrent.futures.ThreadPoolExecutor(2)
@@ -39,7 +41,7 @@ def query(sql, args):
 def get_file_list(user=None):
     logging.info('db.get_file_list')
     files = yield query("""
-        SELECT files.name, files.published, files.id, u.name as user_name, u.id as user_id, files.pages
+        SELECT files.name, files.hashed_name, files.published, files.id, u.name as user_name, u.id as user_id, files.pages
         FROM files
         JOIN users u on (u.id=files.user_id)
         ORDER BY files.published;
@@ -65,7 +67,7 @@ def get_user(name, password):
     hashed_password = yield query("""
         SELECT hashed_password FROM users WHERE name=?
         """, (name,))
-    hashed_password = hashed_password[0][0] if hashed_password else None
+    hashed_password = hashed_password[0]['hashed_password'] if hashed_password else None
     logging.info(f'hashed_password: {hashed_password}')
 
     if not hashed_password:
@@ -105,12 +107,10 @@ def create_user(name, password):
 @coroutine
 def insert_pdf(pdf_name, hashed_name, user_name, total_pages=-1):
     user_id = yield get_user_id(user_name)
-    user_id = user_id[0][0] if user_id is not None else 0
-    logging.info(
-        f'insert_pdf: user_name={user_name} user_id={user_id}')
+    user_id = user_id[0]['id'] if user_id is not None else 0
     pdf_id = yield query("""
-        INSERT into files (name, hashed_name, user_id, pages) values (?, ?, ?, ?);
-        """, (pdf_name, hashed_name, user_id, total_pages))
+        INSERT into files (name, hashed_name, user_id, pages, published) values (?, ?, ?, ?, ?);
+        """, (pdf_name, hashed_name, user_id, total_pages, datetime.datetime.now()))
     logging.debug(f'insert_pdf: {pdf_id} {pdf_name} {user_id} inserted')
     return pdf_id, pdf_name, user_id, hashed_name
 
