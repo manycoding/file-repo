@@ -26,7 +26,6 @@ def query(sql, args):
         with conn:
             cursor.execute(sql, args)
         if sql.strip().startswith('INSERT '):
-            # conn.commit()
             data = cursor.lastrowid
         else:
             data = cursor.fetchall()
@@ -39,7 +38,7 @@ def query(sql, args):
 
 @coroutine
 def get_file_list(user=None):
-    logging.info('db.get_file_list')
+    logging.debug('db.get_file_list')
     files = yield query("""
         SELECT files.name, files.hashed_name, files.published, files.id, u.name as user_name, u.id as user_id, files.pages
         FROM files
@@ -61,25 +60,21 @@ def get_pdf_by_hashed_name(hashed_name):
 
 
 @coroutine
-def get_user(name, password):
-    logging.debug(name)
-    logging.debug(password)
+def auth_user(name, password):
     hashed_password = yield query("""
         SELECT hashed_password FROM users WHERE name=?
         """, (name,))
     hashed_password = hashed_password[0]['hashed_password'] if hashed_password else None
-    logging.info(f'hashed_password: {hashed_password}')
 
     if not hashed_password:
         return None
 
-    hashed_password = yield executor.submit(
+    p = yield executor.submit(
         bcrypt.hashpw, tornado.escape.utf8(password),
         tornado.escape.utf8(hashed_password))
-    logging.info(f'new hashed_password: {hashed_password}')
-    hashed_password = hashed_password[0] if hashed_password else None
+    hashed_password = p[0] if hashed_password else None
 
-    if hashed_password:
+    if hashed_password == p:
         logging.info(f'db.get_user: {name}')
         return name
     return None

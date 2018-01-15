@@ -141,6 +141,6 @@ a code {
     margin-right: 1px;
 }
 
-.file_download, .datetime, .file_name, .file_name_id, .user_name, .current_user, .file_pages {
+.inline {
     display: inline-block;
 }

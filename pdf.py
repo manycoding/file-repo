@@ -4,39 +4,38 @@ import os
 from PyPDF2 import PdfFileReader
 from tornado.log import logging
 from tornado.gen import coroutine
-from pgmagick import Image
+from wand.image import Image
 import db
 import config
 
 
-def page_url(page, hashed_name):
-    return f'/pdf/{hashed_name}/{page}', page
-
-
 @coroutine
-def pdf_file_pages(hashed_name):
-    pdf_name, pdf_pages = None, None
+def get_pdf_filename(hashed_name):
+    pdf_name = None
     pdf_file = yield db.get_pdf_by_hashed_name(hashed_name)
     pdf_file = pdf_file[0] if pdf_file else None
     if pdf_file:
         pdf_name = pdf_file['name']
-        pdf_pages = pdf_file['pages']
-    return pdf_name, pdf_pages
+    return pdf_name
 
 
 @coroutine
-def get_page_url(hashed_name, page):
-    pdf_name, max_pages = yield pdf_file_pages(hashed_name)
-    page = min(page, max_pages - 1)
-    page = max(0, page)
-    pdf_file = f'{config.MEDIA_PDF}/{hashed_name}.pdf[{page}]'
-    png_file = f'{hashed_name}{page}.png'
-    if not os.path.exists(f'{config.MEDIA_PAGES}/{png_file}'):
-        pdf = Image(pdf_file)
-        pdf.write(f'{config.MEDIA_PAGES}/{png_file}')
-        logging.debug(f'get_png_url: generated {page} page {png_file}')
-    png_url = f'/pages/{png_file}'
-    return pdf_name, png_url, page + 1, max_pages
+def save_pdf_to_pngs(hashed_name):
+    pdf_name = yield get_pdf_filename(hashed_name)
+    page_urls = []
+    pdf_file = f'{config.MEDIA_PDF}/{hashed_name}.pdf'
+    images = Image(filename=pdf_file)
+    for i, page in enumerate(images.sequence):
+        png_file = f'{hashed_name}{i}.png'
+        png_filepath = f'{config.MEDIA_PAGES}/{png_file}'
+        with Image(page) as page_image:
+            page_image.alpha_channel = False
+            if not os.path.exists(png_filepath):
+                page_image.save(filename=png_filepath)
+            page_urls.append(png_filepath)
+
+    logging.debug(f'save_pdf_file: saved images to {page_urls}')
+    return page_urls
 
 
 @coroutine
@@ -47,4 +46,6 @@ def save_pdf_file(body, pdf_name, user_name):
     total_pages = PdfFileReader(f'{config.MEDIA_PDF}/{hashed_name}.pdf').getNumPages()
     pdf_data = yield db.insert_pdf(pdf_name, hashed_name, user_name, total_pages)
     logging.debug(f'save_pdf_file: {pdf_name} ({total_pages} pages) saved ({len(body)} bytes) in {hashed_name}.pdf')
+    page_urls = yield save_pdf_to_pngs(hashed_name)
+
     return pdf_data

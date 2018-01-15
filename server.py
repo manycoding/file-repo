@@ -21,14 +21,9 @@ class Application(tornado.web.Application):
             (r"/auth/logout", AuthLogoutHandler),
             (r"/auth/create", AuthCreateHandler),
             (r'/post', PostFileHandler),
-            (r'/pdf/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)?',
-             PreviewHandler),
             (r'/media/pdf/(?P<hashed_name>[^\/]+)',
              PdfDownloadHandler, {'file_path': config.MEDIA_PDF}),
-            (r'/media/png/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)',
-             PngDownloadHandler, {'file_path': config.MEDIA_PAGES}),
-            (r'/pages/(.*)', StaticFileHandler,
-             {'path': f'{config.MEDIA_PAGES}'}),
+            (r'/media/pdf/pages/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)', PngDownloadHandler, {'file_path': config.MEDIA_PAGES}),
         ]
 
         settings = dict(
@@ -122,42 +117,21 @@ class PdfDownloadHandler(BaseHandler):
         self.finish()
 
 
-class PreviewHandler(BaseHandler):
-    @gen.coroutine
-    def get(self, **params):
-        hashed_name = params['hashed_name']
-        page = int(params['page']) if params['page'] else 1
-
-        pdf_name, png_url, page, pages = yield pdf.get_page_url(hashed_name, page - 1)
-        prev_page, next_page = page - 1, page + 1
-        prev_page = (updf.page_url(prev_page, hashed_name)
-                     ) if prev_page > 0 else None
-        next_page = (updf.page_url(next_page, hashed_name)
-                     ) if next_page < pages else None
-        png_url_download = pdf_name.replace('.pdf', f'-page_{page}.png')
-
-        self.render('preview_page.html',
-                    png_url=png_url,
-                    hashed_name=hashed_name,
-                    title=f'{page} стр. {pdf_name}',
-                    pdf_name=pdf_name,
-                    png_url_download=png_url_download,
-                    page=page,
-                    pages=pages,
-                    prev_page=prev_page,
-                    next_page=next_page)
-
-
 class PngDownloadHandler(BaseHandler):
     def initialize(self, file_path):
         self.file_path = file_path
 
     @tornado.web.asynchronous
     @gen.engine
-    def get(self, file_name):
-        file_size = os.path.getsize(f'{self.file_path}/{hashed_name}')
+    def get(self, hashed_name, **params):
+        page = int(params['page']) if params['page'] else 1
+        logging.info(f'page: {page}')
+
+        file_size = os.path.getsize(f'{self.file_path}/{hashed_name}{page}.png')
         logging.info(
             f'download handler: {self.file_path}/{hashed_name} {file_size} bytes')
+        logging.info(
+            f'download handler: {self.file_path}/{hashed_name} bytes')
         self.set_header('Content-Type', 'application/png')
         self.set_header('Content-length', file_size)
         self.flush()
@@ -202,7 +176,7 @@ class AuthLoginHandler(BaseHandler):
     @gen.coroutine
     def post(self):
         user_name = self.get_argument("name")
-        user = yield db.get_user(user_name,
+        user = yield db.auth_user(user_name,
                                  self.get_argument("password"))
         user = user[0] if user else None
 
