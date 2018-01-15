@@ -40,7 +40,7 @@ class Application(tornado.web.Application):
 
 class BaseHandler(tornado.web.RequestHandler):
     def get_current_user(self):
-        logging.debug(f'{self.get_secure_cookie("user")}')
+        logging.debug(self.get_secure_cookie("user"))
         return self.get_secure_cookie("user")
 
     def set_current_user(self, user_name):
@@ -50,7 +50,7 @@ class BaseHandler(tornado.web.RequestHandler):
             self.clear_cookie("user")
 
     async def data_received(self):
-        logging.debug(f'{self.request}')
+        logging.debug(self.request)
 
 
 class HomeHandler(BaseHandler):
@@ -68,15 +68,15 @@ class PostFileHandler(BaseHandler):
     @gen.coroutine
     def post(self, *args, **kwargs):
         files = yield db.get_file_list()
-        logging.debug(f'dir(self)')
+        logging.debug(dir(self))
         for field, files in self.request.files.items():
-            logging.info(f'POST {field} {files}')
+            logging.info('POST {} {}'.format(field, files))
             for info in files:
                 filename = info['filename']
                 content_type = info['content_type']
                 body = info['body']
                 logging.info(
-                    f'POST {field}: {filename} {content_type} {len(body)} bytes')
+                    'POST {}: {} {} {} bytes'.format(field, filename, content_type , len(body)))
                 if content_type.lower() == 'application/pdf':
                     file = yield pdf.save_pdf_file(body,
                                                    filename,
@@ -98,17 +98,18 @@ class PdfDownloadHandler(BaseHandler):
     @tornado.web.asynchronous
     @gen.engine
     def get(self, hashed_name):
-        file_size = os.path.getsize(f'{self.file_path}/{hashed_name}.pdf')
+        file_size = os.path.getsize('{}/{}.pdf'.format(self.file_path, hashed_name))
+        file_path = '{}/{}.pdf'.format(self.file_path, hashed_name)
         logging.info(
-            f'download handler: {self.file_path}/{hashed_name} {file_size} bytes')
+            'download handler: {} {} bytes',format(file_path, str(file_size)))
         self.set_header('Content-Type', 'application/pdf')
         self.set_header('Content-length', file_size)
         self.flush()
-        fd = open(f'{self.file_path}/{hashed_name}.pdf', 'rb')
+        fd = open(file_path, 'rb')
         complete_download = False
         while not complete_download:
             data = fd.read(config.CHUNK_SIZE)
-            logging.info(f'download chunk: {len(data)} bytes')
+            logging.info('download chunk: {} bytes'.format(len(data)))
             if len(data) > 0:
                 self.write(data)
                 yield gen.Task(self.flush)
@@ -125,21 +126,18 @@ class PngDownloadHandler(BaseHandler):
     @gen.engine
     def get(self, hashed_name, **params):
         page = int(params['page']) if params['page'] else 1
-        logging.info(f'page: {page}')
+        logging.info('page: {}'.format(page))
 
-        file_size = os.path.getsize(f'{self.file_path}/{hashed_name}{page}.png')
-        logging.info(
-            f'download handler: {self.file_path}/{hashed_name} {file_size} bytes')
-        logging.info(
-            f'download handler: {self.file_path}/{hashed_name} bytes')
+        file_path = '{}/{}{}.png'.format(self.file_path, hashed_name, page)
+        file_size = os.path.getsize(file_path)
         self.set_header('Content-Type', 'application/png')
         self.set_header('Content-length', file_size)
         self.flush()
-        fd = open(f'{self.file_path}/{hashed_name}{page}.png', 'rb')
+        fd = open(file_path, 'rb')
         complete_download = False
         while not complete_download:
             data = fd.read(config.CHUNK_SIZE)
-            logging.info(f'download chunk: {len(data)} bytes')
+            logging.info('download chunk: {} bytes'.format(len(data)))
             if len(data) > 0:
                 self.write(data)
                 yield gen.Task(self.flush)
@@ -156,7 +154,7 @@ class AuthCreateHandler(BaseHandler):
     def post(self):
         name = self.get_argument("name")
         user_id = yield db.create_user(name, self.get_argument("password"))
-        logging.debug(f'user_id: {user_id}')
+        logging.debug('user_id: {}'.format(user_id))
         if user_id:
             self.set_current_user(name)
             self.redirect(self.get_argument("next", "/"))

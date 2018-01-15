@@ -22,17 +22,17 @@ executor = concurrent.futures.ThreadPoolExecutor(2)
 def query(sql, args):
     data = None
     try:
-        logging.info(f'query: {sql} {args}')
+        logging.info('query: {} {}'.format(sql, args))
         with conn:
             cursor.execute(sql, args)
         if sql.strip().startswith('INSERT '):
             data = cursor.lastrowid
         else:
             data = cursor.fetchall()
-        logging.info(f'query: {data}')
+        logging.info('query: {}'.format(data))
     except Exception as e:
-        logging.error(f'{e}')
-        logging.info(f'query: {sql} {args}')
+        logging.error(e)
+        logging.info('query: {} {}'.format(sql, args))
     return data
 
 
@@ -45,7 +45,7 @@ def get_file_list(user=None):
         JOIN users u on (u.id=files.user_id)
         ORDER BY files.published;
         """, ())
-    logging.debug(f'db.get_file_list {files}')
+    logging.debug('db.get_file_list {}'.format(files))
     return files
 
 
@@ -75,7 +75,7 @@ def auth_user(name, password):
     hashed_password = p[0] if hashed_password else None
 
     if hashed_password == p:
-        logging.info(f'db.get_user: {name}')
+        logging.info('db.get_user: {}'.format(name))
         return name
     return None
 
@@ -106,7 +106,7 @@ def insert_pdf(pdf_name, hashed_name, user_name, total_pages=-1):
     pdf_id = yield query("""
         INSERT into files (name, hashed_name, user_id, pages, published) values (?, ?, ?, ?, ?);
         """, (pdf_name, hashed_name, user_id, total_pages, datetime.datetime.now()))
-    logging.debug(f'insert_pdf: {pdf_id} {pdf_name} {user_id} inserted')
+    logging.debug('insert_pdf: {} {} {} inserted'.format(pdf_id, pdf_name, user_id))
     return pdf_id, pdf_name, user_id, hashed_name
 
 
