@@ -87,7 +87,7 @@ class PostFileHandler(BaseHandler):
                     self.render(
                         "home.html",
                         files_list=files,
-                        error=f"expected pdf but received {content_type.lower()}")
+                        error='expected pdf but received {}'.format(content_type.lower()))
         self.redirect('/')
 
 
