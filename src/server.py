@@ -8,9 +8,8 @@ import config
 from tornado.options import define, options
 from tornado import gen
 from tornado.log import logging
-from tornado.web import StaticFileHandler
 
-define("port", default=8888, help="run on the given port", type=int)
+define("port", default=config.PORT, help="run on the given port", type=int)
 
 
 class Application(tornado.web.Application):
@@ -21,9 +20,10 @@ class Application(tornado.web.Application):
             (r"/auth/logout", AuthLogoutHandler),
             (r"/auth/create", AuthCreateHandler),
             (r'/post', PostFileHandler),
-            (r'/media/pdf/(?P<hashed_name>[^\/]+)',
+            (r'/storage/pdf/(?P<hashed_name>[^\/]+)',
              PdfDownloadHandler, {'file_path': config.MEDIA_PDF}),
-            (r'/media/pdf/pages/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)', PngDownloadHandler, {'file_path': config.MEDIA_PAGES}),
+            (r'/storage/pdf/pages/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)',
+             PngDownloadHandler, {'file_path': config.MEDIA_PAGES}),
         ]
 
         settings = dict(
@@ -76,18 +76,21 @@ class PostFileHandler(BaseHandler):
                 content_type = info['content_type']
                 body = info['body']
                 logging.info(
-                    'POST {}: {} {} {} bytes'.format(field, filename, content_type , len(body)))
+                    'POST {}: {} {} {} bytes'.
+                    format(field, filename, content_type, len(body)))
                 if content_type.lower() == 'application/pdf':
-                    file = yield pdf.save_pdf_file(body,
-                                                   filename,
-                                                   self.current_user.decode()
-                                                   )
+                    file = yield pdf.save_pdf_file(
+                        body,
+                        filename,
+                        self.current_user.decode()
+                    )
                     self.redirect('/')
                 else:
                     self.render(
                         "home.html",
                         files_list=files,
-                        error='expected pdf but received {}'.format(content_type.lower()))
+                        error='expected pdf but received {}'.
+                        format(content_type.lower()))
         self.redirect('/')
 
 
@@ -98,10 +101,11 @@ class PdfDownloadHandler(BaseHandler):
     @tornado.web.asynchronous
     @gen.engine
     def get(self, hashed_name):
-        file_size = os.path.getsize('{}/{}.pdf'.format(self.file_path, hashed_name))
+        file_size = os.path.getsize(
+            '{}/{}.pdf'.format(self.file_path, hashed_name))
         file_path = '{}/{}.pdf'.format(self.file_path, hashed_name)
         logging.info(
-            'download handler: {} {} bytes',format(file_path, str(file_size)))
+            'download handler: {} {} bytes'.format(file_path, str(file_size)))
         self.set_header('Content-Type', 'application/pdf')
         self.set_header('Content-length', file_size)
         self.flush()
@@ -175,7 +179,7 @@ class AuthLoginHandler(BaseHandler):
     def post(self):
         user_name = self.get_argument("name")
         user = yield db.auth_user(user_name,
-                                 self.get_argument("password"))
+                                  self.get_argument("password"))
         user = user[0] if user else None
 
         if user:

@@ -1,7 +1,8 @@
 # file-repo
 Web service to store files
 
-    python server.py
+    docker run -it -p 8889:8889 manycoding/pdf-repo
+
 
 С использованием Python 2 или 3 и фреймворка Tornado напишите веб-сервис со следующим функционалом
 
