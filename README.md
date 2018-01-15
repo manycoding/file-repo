@@ -2,7 +2,11 @@
 Web service to store files
 
     docker run -it -p 8889:8889 manycoding/pdf-repo
+    
+OR
 
+    docker build -t pdf-repo .
+    docker run -it -p 8889:8889 pdf-repo 
 
 С использованием Python 2 или 3 и фреймворка Tornado напишите веб-сервис со следующим функционалом
 
