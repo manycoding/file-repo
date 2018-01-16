@@ -91,7 +91,6 @@ class PostFileHandler(BaseHandler):
                         files_list=file_list,
                         error='expected pdf but received {}'.
                         format(content_type.lower()))
-        self.redirect('/')
 
 
 class PdfDownloadHandler(BaseHandler):
