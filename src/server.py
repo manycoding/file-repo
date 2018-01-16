@@ -67,7 +67,7 @@ class HomeHandler(BaseHandler):
 class PostFileHandler(BaseHandler):
     @gen.coroutine
     def post(self, *args, **kwargs):
-        files = yield db.get_file_list()
+        file_list = yield db.get_file_list()
         logging.debug(dir(self))
         for field, files in self.request.files.items():
             logging.info('POST {} {}'.format(field, files))
@@ -88,7 +88,7 @@ class PostFileHandler(BaseHandler):
                 else:
                     self.render(
                         "home.html",
-                        files_list=files,
+                        files_list=file_list,
                         error='expected pdf but received {}'.
                         format(content_type.lower()))
         self.redirect('/')
