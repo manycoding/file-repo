@@ -12,7 +12,7 @@ import config
 @coroutine
 def get_pdf_filename(hashed_name):
     pdf_name = None
-    pdf_file = yield db.get_pdf_by_hashed_name(hashed_name)
+    pdf_file = db.get_pdf_by_hashed_name(hashed_name)
     pdf_file = pdf_file[0] if pdf_file else None
     if pdf_file:
         pdf_name = pdf_file['name']
@@ -45,7 +45,7 @@ def save_pdf_file(body, pdf_name, user_name):
     with open(file_path, 'wb') as pdf:
         pdf.write(body)
     total_pages = PdfFileReader(file_path).getNumPages()
-    pdf_data = yield db.insert_pdf(pdf_name, hashed_name, user_name, total_pages)
+    pdf_data = db.insert_pdf(pdf_name, hashed_name, user_name, total_pages)
     logging.debug('save_pdf_file: {} ({} pages) saved ({} bytes) in {}.pdf'.format(pdf_name, total_pages, len(body), hashed_name))
     page_urls = yield save_pdf_to_pngs(hashed_name)
 
