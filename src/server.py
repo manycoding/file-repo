@@ -54,9 +54,8 @@ class BaseHandler(tornado.web.RequestHandler):
 
 
 class HomeHandler(BaseHandler):
-    @gen.coroutine
     def get(self):
-        files = yield db.get_file_list()
+        files = db.get_file_list()
         logging.info(files)
         return self.render("home.html",
                            files_list=files,
@@ -67,7 +66,7 @@ class HomeHandler(BaseHandler):
 class PostFileHandler(BaseHandler):
     @gen.coroutine
     def post(self, *args, **kwargs):
-        file_list = yield db.get_file_list()
+        file_list = db.get_file_list()
         logging.debug(dir(self))
         for field, files in self.request.files.items():
             logging.info('POST {} {}'.format(field, files))
@@ -90,7 +89,7 @@ class PostFileHandler(BaseHandler):
                         "home.html",
                         files_list=file_list,
                         error='expected pdf but received {}'.
-                        format(content_type.lower()))
+                        format(content_type))
 
 
 class PdfDownloadHandler(BaseHandler):
@@ -179,8 +178,6 @@ class AuthLoginHandler(BaseHandler):
         user_name = self.get_argument("name")
         user = yield db.auth_user(user_name,
                                   self.get_argument("password"))
-        user = user[0] if user else None
-
         if user:
             self.set_current_user(user_name)
             self.redirect(self.get_argument("next", "/"))
