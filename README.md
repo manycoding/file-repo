@@ -1,5 +1,5 @@
-# file-repo
-Web service to store files
+# pdf-repo
+Web service to store pdf files
 
     docker run -it -p 8888:8888 manycoding/pdf-repo
     
