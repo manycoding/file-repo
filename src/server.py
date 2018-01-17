@@ -27,7 +27,7 @@ class Application(tornado.web.Application):
         ]
 
         settings = dict(
-            blog_title=u"File repo",
+            title=u"Pdf repo",
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
             static_path=os.path.join(os.path.dirname(__file__), "static"),
             xsrf_cookies=True,
@@ -67,16 +67,14 @@ class PostFileHandler(BaseHandler):
     @gen.coroutine
     def post(self, *args, **kwargs):
         file_list = db.get_file_list()
-        logging.debug(dir(self))
         for field, files in self.request.files.items():
-            logging.info('POST {} {}'.format(field, files))
             for info in files:
                 filename = info['filename']
                 content_type = info['content_type']
                 body = info['body']
                 logging.info(
-                    'POST {}: {} {} {} bytes'.
-                    format(field, filename, content_type, len(body)))
+                    'POST {}: {} {} bytes'.
+                    format(field, content_type, len(body)))
                 if content_type.lower() == 'application/pdf':
                     file = yield pdf.save_pdf_file(
                         body,

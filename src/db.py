@@ -69,7 +69,6 @@ def auth_user(name, password):
     p = yield executor.submit(
         bcrypt.hashpw, tornado.escape.utf8(password),
         tornado.escape.utf8(hashed_password))
-    logging.info(f"p {p}")
     if hashed_password == p:
         logging.info('db.get_user: {}'.format(name))
         return name
