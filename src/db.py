@@ -84,6 +84,8 @@ def get_user_id(name):
 
 @coroutine
 def create_user(name, password):
+    if not password:
+        return None
     hashed_password = yield executor.submit(
         bcrypt.hashpw, tornado.escape.utf8(password),
         bcrypt.gensalt())
