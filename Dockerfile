@@ -5,7 +5,7 @@ RUN echo 'deb http://mirror.yandex.ru/debian jessie main contrib non-free >> /et
     apt-get install -y imagemagick python3 python3-pip libffi-dev && \
     apt-get clean
 
-RUN pip3 install --upgrade pip setuptools tornado PyPDF2 wand bcrypt
+RUN pip3 install --upgrade pip setuptools tornado wand bcrypt
 
 ADD /src /pdf-repo
 

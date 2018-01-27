@@ -31,7 +31,7 @@ class Application(tornado.web.Application):
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
             static_path=os.path.join(os.path.dirname(__file__), "static"),
             xsrf_cookies=True,
-            cookie_secret="oLGcDzgWH^5^$M77DS8mkOHNZ@$yO3pu1W6^Sy&s7jHreFUdGsy5EvkEIbKN%Q6^0qyr6J@u0Vkz3k!sU#f3o0plKXYlB*xL^7o*",
+            cookie_secret="oLGcDzgWH^5^$M77DS8mkOHNZ@$yO3pu1W6^Sy&s7jHreFUdGsy5EvkEIbKN%Q6^0qyr6J@u0Vkz3k!sU#f3o0plKXYlB*xL^7o*",  # noqa
             login_url="/auth/create",
             debug=True
         )
@@ -66,8 +66,10 @@ class HomeHandler(BaseHandler):
 class PostFileHandler(BaseHandler):
     @gen.coroutine
     def post(self, *args, **kwargs):
-        file_list = db.get_file_list()
-        for field, files in self.request.files.items():
+        items = self.request.files.items()
+        if not items:
+            error = "Please select file first"
+        for field, files in items:
             for info in files:
                 filename = info['filename']
                 content_type = info['content_type']
@@ -82,12 +84,13 @@ class PostFileHandler(BaseHandler):
                         self.current_user.decode()
                     )
                     self.redirect('/')
-                else:
-                    self.render(
-                        "home.html",
-                        files_list=file_list,
-                        error='expected pdf but received {}'.
-                        format(content_type))
+                    return
+                error = 'expected pdf but received {}'.format(content_type)
+
+        self.render(
+            "home.html",
+            files_list=db.get_file_list(),
+            error=error)
 
 
 class PdfDownloadHandler(BaseHandler):

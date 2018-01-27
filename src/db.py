@@ -35,7 +35,6 @@ def query(sql, args):
 
 
 def get_file_list(user=None):
-    logging.debug('db.get_file_list')
     files = query("""
         SELECT files.name, files.hashed_name, files.published, files.id, u.name as user_name, u.id as user_id, files.pages
         FROM files
