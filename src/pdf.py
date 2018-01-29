@@ -10,18 +10,7 @@ import config
 
 
 @coroutine
-def get_pdf_filename(hashed_name):
-    pdf_name = None
-    pdf_file = db.get_pdf_by_hashed_name(hashed_name)
-    pdf_file = pdf_file[0] if pdf_file else None
-    if pdf_file:
-        pdf_name = pdf_file['name']
-    return pdf_name
-
-
-@coroutine
 def save_pdf_to_pngs(hashed_name):
-    pdf_name = yield get_pdf_filename(hashed_name)
     page_urls = []
     pdf_file = '{}/{}.pdf'.format(config.MEDIA_PDF, hashed_name)
     try:
@@ -34,7 +23,6 @@ def save_pdf_to_pngs(hashed_name):
                     if not os.path.exists(png_filepath):
                         page_image.save(filename=png_filepath)
                     page_urls.append(png_filepath)
-
     except exceptions.CacheError as e:
         logging.error(e)
     logging.debug('save_pdf_to_pngs: saved images to {}'.format(page_urls))
