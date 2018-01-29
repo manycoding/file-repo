@@ -8,6 +8,7 @@ RUN echo 'deb http://mirror.yandex.ru/debian jessie main contrib non-free >> /et
 RUN pip3 install --upgrade pip setuptools tornado wand bcrypt
 
 ADD /src /pdf-repo
+ADD policy.xml /etc/ImageMagick-6/policy.xml
 
 VOLUME /pdf-repo/storage/
 EXPOSE 8888
