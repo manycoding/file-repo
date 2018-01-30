@@ -2,14 +2,12 @@ import hashlib
 import time
 import os
 from tornado.log import logging
-from tornado.gen import coroutine
 from wand.image import Image
 from wand import exceptions
 import db
 import config
 
 
-@coroutine
 def save_pdf_to_pngs(hashed_name):
     page_urls = []
     pdf_file = '{}/{}.pdf'.format(config.MEDIA_PDF, hashed_name)
@@ -29,13 +27,12 @@ def save_pdf_to_pngs(hashed_name):
     return page_urls
 
 
-@coroutine
 def save_pdf_file(body, pdf_name, user_name):
     hashed_name = hashlib.md5(str(time.time()).encode()).hexdigest()
     file_path = '{}/{}.pdf'.format(config.MEDIA_PDF, hashed_name)
     with open(file_path, 'wb') as pdf:
         pdf.write(body)
-    page_urls = yield save_pdf_to_pngs(hashed_name)
+    page_urls = save_pdf_to_pngs(hashed_name)
     total_pages = len(page_urls)
     pdf_data = db.insert_pdf(pdf_name, hashed_name, user_name, total_pages)
     logging.debug('save_pdf_file: {} ({} pages) saved ({} bytes) in {}.pdf'.format(pdf_name, total_pages, len(body), hashed_name)) # noqa

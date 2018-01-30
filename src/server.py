@@ -64,7 +64,6 @@ class HomeHandler(BaseHandler):
 
 
 class PostFileHandler(BaseHandler):
-    @gen.coroutine
     def post(self, *args, **kwargs):
         items = self.request.files.items()
         if not items:
@@ -78,7 +77,7 @@ class PostFileHandler(BaseHandler):
                     'POST {}: {} {} bytes'.
                     format(field, content_type, len(body)))
                 if content_type.lower() == 'application/pdf':
-                    file = yield pdf.save_pdf_file(
+                    pdf.save_pdf_file(
                         body,
                         filename,
                         self.current_user.decode()
