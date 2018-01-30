@@ -97,9 +97,7 @@ class PdfDownloadHandler(BaseHandler):
     def initialize(self, file_path):
         self.file_path = file_path
 
-    @tornado.web.asynchronous
-    @gen.engine
-    def get(self, hashed_name):
+    async def get(self, hashed_name):
         file_size = os.path.getsize(
             '{}/{}.pdf'.format(self.file_path, hashed_name))
         file_path = '{}/{}.pdf'.format(self.file_path, hashed_name)
@@ -108,55 +106,52 @@ class PdfDownloadHandler(BaseHandler):
         self.set_header('Content-Type', 'application/pdf')
         self.set_header('Content-length', file_size)
         self.flush()
-        fd = open(file_path, 'rb')
-        complete_download = False
-        while not complete_download:
-            data = fd.read(config.CHUNK_SIZE)
-            logging.info('download chunk: {} bytes'.format(len(data)))
-            if len(data) > 0:
-                self.write(data)
-                yield gen.Task(self.flush)
-            complete_download = (len(data) == 0)
-        fd.close()
-        self.finish()
+
+        with open(file_path, 'rb') as f:
+            complete_download = False
+            while not complete_download:
+                data = f.read(config.CHUNK_SIZE)
+                logging.debug('download chunk: {} bytes'.format(len(data)))
+                if len(data) > 0:
+                    self.write(data)
+                    await gen.Task(self.flush)
+                complete_download = (len(data) == 0)
 
 
 class PngDownloadHandler(BaseHandler):
     def initialize(self, file_path):
         self.file_path = file_path
 
-    @tornado.web.asynchronous
-    @gen.engine
-    def get(self, hashed_name, **params):
+    async def get(self, hashed_name, **params):
         page = int(params['page']) if params['page'] else 1
         logging.info('page: {}'.format(page))
 
         file_path = '{}/{}{}.png'.format(self.file_path, hashed_name, page)
-        file_size = os.path.getsize(file_path)
-        self.set_header('Content-Type', 'application/png')
-        self.set_header('Content-length', file_size)
-        self.flush()
-        fd = open(file_path, 'rb')
-        complete_download = False
-        while not complete_download:
-            data = fd.read(config.CHUNK_SIZE)
-            logging.info('download chunk: {} bytes'.format(len(data)))
-            if len(data) > 0:
-                self.write(data)
-                yield gen.Task(self.flush)
-            complete_download = (len(data) == 0)
-        fd.close()
-        self.finish()
+        try:
+            file_size = os.path.getsize(file_path)
+            self.set_header('Content-Type', 'application/png')
+            self.set_header('Content-length', file_size)
+            self.flush()
+            with open(file_path, 'rb') as f:
+                complete_download = False
+                while not complete_download:
+                    data = f.read(config.CHUNK_SIZE)
+                    logging.info('download chunk: {} bytes'.format(len(data)))
+                    if len(data) > 0:
+                        self.write(data)
+                        await gen.Task(self.flush)
+                    complete_download = (len(data) == 0)
+        except FileNotFoundError:
+            self.redirect("/")
 
 
 class AuthCreateHandler(BaseHandler):
     def get(self):
         self.render("create_user.html", error=None)
 
-    @gen.coroutine
-    def post(self):
+    async def post(self):
         name = self.get_argument("name")
-        user_id = yield db.create_user(name, self.get_argument("password"))
+        user_id = await db.create_user(name, self.get_argument("password"))
         logging.debug('user_id: {}'.format(user_id))
         if user_id:
             self.set_current_user(name)
@@ -174,10 +169,9 @@ class AuthLoginHandler(BaseHandler):
         else:
             self.render("login.html", error=None)
 
-    @gen.coroutine
-    def post(self):
+    async def post(self):
         user_name = self.get_argument("name")
-        user = yield db.auth_user(user_name,
+        user = await db.auth_user(user_name,
                                   self.get_argument("password"))
         if user:
             self.set_current_user(user_name)
