@@ -8,8 +8,11 @@ import config
 from tornado.options import define, options
 from tornado import gen
 from tornado.log import logging
+from concurrent.futures import ThreadPoolExecutor
+
 
 define("port", default=config.PORT, help="run on the given port", type=int)
+threadpool = ThreadPoolExecutor(4)
 
 
 class Application(tornado.web.Application):
@@ -77,11 +80,8 @@ class PostFileHandler(BaseHandler):
                     'POST {}: {} {} bytes'.
                     format(field, content_type, len(body)))
                 if content_type.lower() == 'application/pdf':
-                    pdf.save_pdf_file(
-                        body,
-                        filename,
-                        self.current_user.decode()
-                    )
+                    threadpool.submit(pdf.save_pdf_file, body,
+                                      filename, self.current_user.decode())
                     self.redirect('/')
                     return
                 error = 'expected pdf but received {}'.format(content_type)

@@ -10,7 +10,7 @@ from tornado.log import logging
 
 
 define("database", default="file-repo.sqlite3", help="database name")
-conn = sqlite3.connect(options.database)
+conn = sqlite3.connect(options.database, check_same_thread=False)
 conn.row_factory = lambda _cursor, row: {
     col[0]: row[i] for i, col in enumerate(_cursor.description)}
 cursor = conn.cursor()
