@@ -1,5 +1,6 @@
 import db
 import mimetypes
+import pathlib
 import tornado.ioloop
 import tornado.web
 import os
@@ -25,9 +26,9 @@ class Application(tornado.web.Application):
             (r"/auth/create", AuthCreateHandler),
             (r'/post', PostFileHandler),
             (r'/storage/pdf/(?P<hashed_name>[^\/]+)',
-             DownloadHandler, {'file_path': config.MEDIA_PDF}),
+             DownloadHandler, dict(file_path=config.MEDIA_PDF)),
             (r'/storage/pdf/pages/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)',
-             PngDownloadHandler, {'file_path': config.MEDIA_PAGES}),
+             PngDownloadHandler, dict(file_path=config.MEDIA_PAGES)),
         ]
 
         settings = dict(
@@ -84,10 +85,8 @@ class PostFileHandler(BaseHandler):
                     threadpool.submit(pdf.save_pdf_file, body,
                                       filename, self.current_user.decode())
                 else:
-                    ext = mimetypes.guess_extension(content_type)
                     threadpool.submit(pdf.save_file, body, filename,
-                                      self.current_user.decode(),
-                                      ext)
+                                      self.current_user.decode())
                 self.redirect('/')
                 return
         self.render(
@@ -102,11 +101,10 @@ class DownloadHandler(BaseHandler):
 
     async def get(self, hashed_name):
         file_size = os.path.getsize(
-            '{}/{}.pdf'.format(self.file_path, hashed_name))
-        file_path = '{}/{}.pdf'.format(self.file_path, hashed_name)
+            '{}/{}'.format(self.file_path, hashed_name))
+        file_path = '{}/{}'.format(self.file_path, hashed_name)
         logging.info(
             'download handler: {} {} bytes'.format(file_path, str(file_size)))
-        self.set_header('Content-Type', 'application/pdf')
         self.set_header('Content-length', file_size)
         self.flush()
 

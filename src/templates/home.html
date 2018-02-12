@@ -3,8 +3,10 @@
 {% block body %}
     {% if current_user %}
         {% include 'upload_form.html' %}
-        {% for pdf_file in files_list %}
-            {% include 'file.html' %}
+        {% if files_list %}
+            {% for pdf_file in files_list %}
+                {% include 'file.html' %}
+            {% end %}
         {% end %}
     {% end %}
 {% end %}
