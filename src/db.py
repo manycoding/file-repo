@@ -40,7 +40,7 @@ def get_file_list(user=None):
         FROM files
         JOIN users u on (u.id=files.user_id)
         ORDER BY files.published;
-        """, ())
+        """, ()) # noqa
     logging.debug('db.get_file_list {}'.format(files))
     return files
 
@@ -59,7 +59,7 @@ def auth_user(name, password):
     hashed_password = query("""
         SELECT hashed_password FROM users WHERE name=?
         """, (name,))
-    hashed_password = hashed_password[0]['hashed_password'] if hashed_password else None
+    hashed_password = hashed_password[0]['hashed_password'] if hashed_password else None # noqa
     logging.debug("hashed_password {}".format(hashed_password))
 
     if not hashed_password:
@@ -97,12 +97,20 @@ def create_user(name, password):
 def insert_pdf(pdf_name, hashed_name, user_name, total_pages=-1):
     user_id = get_user_id(user_name)
     user_id = user_id[0]['id'] if user_id is not None else 0
-    pdf_id = query("""
+    query("""
         INSERT into files (name, hashed_name, user_id, pages, published) values (?, ?, ?, ?, ?);
-        """, (pdf_name, hashed_name, user_id, total_pages, datetime.datetime.now()))
+        """, (pdf_name, hashed_name, user_id, total_pages, datetime.datetime.now())) # noqa
     logging.debug(
-        'insert_pdf: {} {} {} inserted'.format(pdf_id, pdf_name, user_id))
-    return pdf_id, pdf_name, user_id, hashed_name
+        'insert_pdf: {} {} {} inserted'.format(pdf_id, pdf_name, user_id)) # noqa
+
+
+def insert_file(name, hashed_name, user_name):
+    user_id = get_user_id(user_name)
+    user_id = user_id[0]['id'] if user_id is not None else 0
+    query("""
+        INSERT into files (name, hashed_name, user_id, published)
+            values (?, ?, ?, ?);
+        """, (name, hashed_name, user_id, datetime.datetime.now()))
 
 
 def init():

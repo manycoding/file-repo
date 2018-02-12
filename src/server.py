@@ -1,4 +1,5 @@
 import db
+import mimetypes
 import tornado.ioloop
 import tornado.web
 import os
@@ -24,7 +25,7 @@ class Application(tornado.web.Application):
             (r"/auth/create", AuthCreateHandler),
             (r'/post', PostFileHandler),
             (r'/storage/pdf/(?P<hashed_name>[^\/]+)',
-             PdfDownloadHandler, {'file_path': config.MEDIA_PDF}),
+             DownloadHandler, {'file_path': config.MEDIA_PDF}),
             (r'/storage/pdf/pages/(?P<hashed_name>[^\/]+)/?(?P<page>[^\/]+)',
              PngDownloadHandler, {'file_path': config.MEDIA_PAGES}),
         ]
@@ -82,17 +83,20 @@ class PostFileHandler(BaseHandler):
                 if content_type.lower() == 'application/pdf':
                     threadpool.submit(pdf.save_pdf_file, body,
                                       filename, self.current_user.decode())
-                    self.redirect('/')
-                    return
-                error = 'expected pdf but received {}'.format(content_type)
-
+                else:
+                    ext = mimetypes.guess_extension(content_type)
+                    threadpool.submit(pdf.save_file, body, filename,
+                                      self.current_user.decode(),
+                                      ext)
+                self.redirect('/')
+                return
         self.render(
             "home.html",
             files_list=db.get_file_list(),
             error=error)
 
 
-class PdfDownloadHandler(BaseHandler):
+class DownloadHandler(BaseHandler):
     def initialize(self, file_path):
         self.file_path = file_path
 

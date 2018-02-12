@@ -1,7 +1,9 @@
     <div class="pdf_row">
         <div class="inline">{{ pdf_file['user_name'] }}</div>
         <div class="inline"><a href="/storage/pdf/{{pdf_file['hashed_name']}}" download="{{ pdf_file['name'] }}">{{ pdf_file['name'] }}</a></div>
-        {% for page in range(1, pdf_file['pages'] + 1) %}
-            <div class="inline"><a href="/storage/pdf/pages/{{ pdf_file['hashed_name']}}{{page-1}}" download="{{ pdf_file['hashed_name']}}_{{page}}.png">{{ page }}</a></div>
+        {% if pdf_file['pages'] %}
+            {% for page in range(1, pdf_file['pages'] + 1) %}
+                <div class="inline"><a href="/storage/pdf/pages/{{ pdf_file['hashed_name']}}{{page-1}}" download="{{ pdf_file['hashed_name']}}_{{page}}.png">{{ page }}</a></div>
+            {% end %}
         {% end %}
    </div>

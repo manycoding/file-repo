@@ -34,7 +34,15 @@ def save_pdf_file(body, pdf_name, user_name):
         pdf.write(body)
     page_urls = save_pdf_to_pngs(hashed_name)
     total_pages = len(page_urls)
-    pdf_data = db.insert_pdf(pdf_name, hashed_name, user_name, total_pages)
+    db.insert_pdf(pdf_name, hashed_name, user_name, total_pages)
     logging.debug('save_pdf_file: {} ({} pages) saved ({} bytes) in {}.pdf'.format(pdf_name, total_pages, len(body), hashed_name)) # noqa
+    # return pdf_data
 
-    return pdf_data
+
+def save_file(body, name, user_name, ext):
+    hashed_name = hashlib.md5(str(time.time()).encode()).hexdigest()
+    file_path = '{}/{}.{}'.format(config.MEDIA_PDF, hashed_name, ext)
+    with open(file_path, 'wb') as f:
+        f.write(body)
+    db.insert_file(name, hashed_name, user_name)
+    logging.debug('save_file: {} saved ({} bytes) in {}.{}}'.format(pdf_name, len(body), hashed_name, ext)) # noqa
